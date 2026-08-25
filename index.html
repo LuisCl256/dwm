@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <title>DWM PR 1</title>
+  <title>DWM - PR 3</title>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
 
@@ -15,11 +15,37 @@
 
 <body>
 
+  <!-- Navbar -->
+  <nav class="navbar navbar-expand-lg navbar-dark bg-primary mb-4">
+    <div class="container-fluid">
+      <a class="navbar-brand" href="#">🎵 Time Signatures</a>
+
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navMenu">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+
+      <div class="collapse navbar-collapse" id="navMenu">
+        <ul class="navbar-nav me-auto">
+          <li class="nav-item"><a class="nav-link" href="#s34">3/4</a></li>
+          <li class="nav-item"><a class="nav-link" href="#s44">4/4</a></li>
+          <li class="nav-item"><a class="nav-link" href="#s54">5/4</a></li>
+          <li class="nav-item"><a class="nav-link" href="#s68">6/8</a></li>
+          <li class="nav-item"><a class="nav-link" href="#s78">7/8</a></li>
+          <li class="nav-item"><a class="nav-link" href="#crear">Crea el tuyo</a></li>
+        </ul>
+      </div>
+    </div>
+  </nav>
+
   <div class="container-fluid mt-3">
     <h1>Time Signatures</h1>
     <p>Representación visual de las cifras indicadoras de compás en la música</p>
 
-    <p>3/4 (waltz)</p>
+    <button type="button" class="btn btn-outline-primary mb-4" data-bs-toggle="modal" data-bs-target="#infoModal">
+      ¿Qué es una cifra indicadora de compás?
+    </button>
+
+    <p id="s34">3/4 (waltz)</p>
     <div class="row">
       <div class="col p-3 bg-danger text-white border-end border-dark">1</div>
       <div class="col p-3 bg-warning text-black border-end border-dark">2</div>
@@ -31,7 +57,7 @@
 
     <p></p>
 
-    <p>4/4 (mayoría de canciones)</p>
+    <p id="s44">4/4 (mayoría de canciones)</p>
     <div class="row">
       <div class="col p-3 bg-danger text-white border-end border-dark">1</div>
       <div class="col p-3 bg-warning text-black border-end border-dark">2</div>
@@ -45,7 +71,7 @@
 
     <p></p>
 
-    <p>5/4 (Take Five, Mission: Impossible Theme, etc.)</p>
+    <p id="s54">5/4 (Take Five, Mission: Impossible Theme, etc.)</p>
     <div class="row">
       <div class="col p-3 bg-danger text-white border-end border-dark">1</div>
       <div class="col p-3 bg-warning text-black border-end border-dark">2</div>
@@ -61,7 +87,7 @@
     
 	<p></p>
     
-    <p>6/8 (cueca)</p>
+    <p id="s68">6/8 (cueca)</p>
 
     <div class="row">
       <div class="col p-3 bg-danger text-white border-end border-dark">1</div>
@@ -81,7 +107,7 @@
 
     <p></p>
 	
-    <p>7/8 (compás irregular)</p>
+    <p id="s78">7/8 (compás irregular)</p>
 
     <div class="row">
       <div class="col p-3 bg-danger text-white border-end border-dark">1</div>
@@ -100,7 +126,60 @@
       <div class="col p-3 bg-warning text-black border-end border-dark">6</div>
       <div class="col p-3 bg-warning text-black">7</div>
     </div>
+
+    <p></p>
+    <hr>
+
+    <!-- Creación y manipulación de elementos con JS -->
+    <h2 id="crear">Crea tu propio compás</h2>
+    <p>Ingresa un nombre y una cantidad de tiempos, y la página construirá el bloque visual por ti.</p>
+
+    <div class="row g-2 mb-3" style="max-width: 500px;">
+      <div class="col-5">
+        <input type="text" id="nombreCompas" class="form-control" placeholder="Ej: 9/8">
+      </div>
+      <div class="col-4">
+        <input type="number" id="numTiempos" class="form-control" placeholder="N° de tiempos" min="2" max="12">
+      </div>
+      <div class="col-3">
+        <button type="button" id="btnAgregar" class="btn btn-success w-100">Agregar</button>
+      </div>
+    </div>
+
+    <p class="text-muted"><small>Tip: haz clic sobre cualquier bloque numerado (incluso los de arriba) para cambiar cuál es el tiempo acentuado.</small></p>
+
+    <!-- Aquí se insertan los compases creados dinámicamente -->
+    <div id="compasesGenerados" class="mb-5"></div>
+
   </div>
+
+  <!-- Modal -->
+  <div class="modal fade" id="infoModal" tabindex="-1" aria-labelledby="infoModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="infoModalLabel">Cifra indicadora de compás</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+        </div>
+        <div class="modal-body">
+          <p>La cifra indicadora de compás (o <em>time signature</em>) es la fracción que aparece al inicio de una partitura (por ejemplo 3/4 o 4/4).</p>
+          <p>El número de arriba indica cuántos tiempos hay en cada compás, y el número de abajo indica qué figura musical representa un tiempo.</p>
+          <p>En esta página, el bloque en rojo marca siempre el primer tiempo (el "golpe fuerte") de cada compás.</p>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <footer class="bg-dark text-white text-center py-3 mt-5">
+    <p class="mb-0">© 2026 Proyecto de práctica - Desarrollo Web y Móvil (UNAB)</p>
+  </footer>
+
+  <!-- Implementación de JavaScript -->
+  <script src="practica.js"></script>
 
 </body>
 </html>
