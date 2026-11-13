@@ -1,0 +1,173 @@
+name: flor-vida
+# Puertos publicados: exclusivamente Gateway, ligado a 127.0.0.1.
+# Los microservicios y MongoDB no tienen sección ports.
+services:
+  mongo:
+    image: mongo:7.0
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD_FILE: /run/secrets/mongo-root-password
+    volumes:
+      - mongo_data:/data/db
+      - ./secrets/mongo-root-password:/run/secrets/mongo-root-password:ro
+      - ./secrets/mongo-inventory-password:/run/secrets/mongo-inventory-password:ro
+      - ./secrets/mongo-orders-password:/run/secrets/mongo-orders-password:ro
+      - ./secrets/mongo-clients-password:/run/secrets/mongo-clients-password:ro
+      - ./secrets/mongo-payments-password:/run/secrets/mongo-payments-password:ro
+      - ./secrets/mongo-analytics-password:/run/secrets/mongo-analytics-password:ro
+      - ./mongo-init/create-users.sh:/docker-entrypoint-initdb.d/create-users.sh:ro
+    networks: [private_data]
+    healthcheck:
+      test: ["CMD-SHELL", "test -f /data/db/flor_initialized && mongosh --quiet -u root -p \"$$(cat /run/secrets/mongo-root-password)\" --authenticationDatabase admin --eval 'db.runCommand({ping:1}).ok' | grep -q 1"]
+      interval: 10s
+      timeout: 10s
+      retries: 15
+
+  inventory:
+    build: {context: ., dockerfile: backend/Dockerfile}
+    command: ["uvicorn", "app.inventory:app", "--host", "0.0.0.0", "--port", "8000"]
+    restart: on-failure
+    environment: {MONGO_HOST: mongo, MONGO_DB: flor_inventory, MONGO_SERVICE: inventory, MONGO_USER: inventory_user}
+    volumes:
+      - ./secrets/jwt_public.pem:/run/secrets/jwt_public.pem:ro
+      - ./secrets/service_token:/run/secrets/service_token:ro
+      - ./secrets/mongo-inventory-password:/run/secrets/mongo-inventory-password:ro
+    depends_on: {mongo: {condition: service_healthy}}
+    networks: [private_api, private_data]
+
+  clients:
+    build: {context: ., dockerfile: backend/Dockerfile}
+    command: ["uvicorn", "app.clients:app", "--host", "0.0.0.0", "--port", "8000"]
+    restart: on-failure
+    environment: {MONGO_HOST: mongo, MONGO_DB: flor_clients, MONGO_SERVICE: clients, MONGO_USER: clients_user}
+    volumes:
+      - ./secrets/jwt_public.pem:/run/secrets/jwt_public.pem:ro
+      - ./secrets/service_token:/run/secrets/service_token:ro
+      - ./secrets/mongo-clients-password:/run/secrets/mongo-clients-password:ro
+    depends_on: {mongo: {condition: service_healthy}}
+    networks: [private_api, private_data]
+
+  orders:
+    build: {context: ., dockerfile: backend/Dockerfile}
+    command: ["uvicorn", "app.orders:app", "--host", "0.0.0.0", "--port", "8000"]
+    restart: on-failure
+    environment: {MONGO_HOST: mongo, MONGO_DB: flor_orders, MONGO_SERVICE: orders, MONGO_USER: orders_user, INVENTORY_URL: "http://inventory:8000"}
+    volumes:
+      - ./secrets/jwt_public.pem:/run/secrets/jwt_public.pem:ro
+      - ./secrets/service_token:/run/secrets/service_token:ro
+      - ./secrets/mongo-orders-password:/run/secrets/mongo-orders-password:ro
+    depends_on: {mongo: {condition: service_healthy}, inventory: {condition: service_started}}
+    networks: [private_api, private_data]
+
+  payments:
+    build: {context: ., dockerfile: backend/Dockerfile}
+    command: ["uvicorn", "app.payments:app", "--host", "0.0.0.0", "--port", "8000"]
+    restart: on-failure
+    environment: {MONGO_HOST: mongo, MONGO_DB: flor_payments, MONGO_SERVICE: payments, MONGO_USER: payments_user, ORDERS_URL: "http://orders:8000"}
+    volumes:
+      - ./secrets/jwt_public.pem:/run/secrets/jwt_public.pem:ro
+      - ./secrets/service_token:/run/secrets/service_token:ro
+      - ./secrets/mongo-payments-password:/run/secrets/mongo-payments-password:ro
+    depends_on: {mongo: {condition: service_healthy}, orders: {condition: service_started}}
+    networks: [private_api, private_data]
+
+  mongo_provision:
+    image: mongo:7.0
+    restart: "no"
+    entrypoint: ["/bin/bash", "/usr/local/bin/ensure-analytics-user.sh"]
+    volumes:
+      - ./secrets/mongo-root-password:/run/secrets/mongo-root-password:ro
+      - ./secrets/mongo-analytics-password:/run/secrets/mongo-analytics-password:ro
+      - ./mongo-init/ensure-analytics-user.sh:/usr/local/bin/ensure-analytics-user.sh:ro
+    depends_on: {mongo: {condition: service_healthy}}
+    networks: [private_data]
+
+  analytics:
+    build: {context: ., dockerfile: backend/Dockerfile}
+    command: ["uvicorn", "app.analytics:app", "--host", "0.0.0.0", "--port", "8000"]
+    restart: on-failure
+    environment: {MONGO_HOST: mongo, MONGO_DB: flor_analytics, MONGO_SERVICE: analytics, MONGO_USER: analytics_user}
+    volumes:
+      - ./secrets/jwt_public.pem:/run/secrets/jwt_public.pem:ro
+      - ./secrets/mongo-analytics-password:/run/secrets/mongo-analytics-password:ro
+    depends_on: {mongo_provision: {condition: service_completed_successfully}}
+    networks: [private_api, private_data]
+
+  graphql:
+    build: {context: ., dockerfile: backend/Dockerfile}
+    command: ["uvicorn", "app.graphql_gateway:app", "--host", "0.0.0.0", "--port", "8000"]
+    restart: on-failure
+    volumes:
+      - ./secrets/jwt_public.pem:/run/secrets/jwt_public.pem:ro
+    depends_on: {inventory: {condition: service_started}, orders: {condition: service_started}, payments: {condition: service_started}}
+    networks: [private_api]
+
+  broker:
+    build: {context: ., dockerfile: rabbitmq/Dockerfile}
+    hostname: flor-rabbit
+    restart: unless-stopped
+    volumes:
+      - rabbit_data:/var/lib/rabbitmq
+      - ./secrets/rabbitmq-password:/run/secrets/rabbitmq-password:ro
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 15s
+      timeout: 15s
+      retries: 20
+    networks: [private_messaging]
+
+  order_producer:
+    build: {context: ., dockerfile: backend/Dockerfile}
+    command: ["python", "-m", "app.messaging.productor"]
+    restart: on-failure
+    environment: {MONGO_HOST: mongo, MONGO_DB: flor_orders, MONGO_SERVICE: orders, MONGO_USER: orders_user, EVENT_COLLECTION: orders, BROKER_HOST: broker}
+    volumes:
+      - ./secrets/mongo-orders-password:/run/secrets/mongo-orders-password:ro
+      - ./secrets/rabbitmq-password:/run/secrets/rabbitmq-password:ro
+    depends_on: {mongo: {condition: service_healthy}, broker: {condition: service_healthy}}
+    networks: [private_data, private_messaging]
+
+  payment_producer:
+    build: {context: ., dockerfile: backend/Dockerfile}
+    command: ["python", "-m", "app.messaging.productor"]
+    restart: on-failure
+    environment: {MONGO_HOST: mongo, MONGO_DB: flor_payments, MONGO_SERVICE: payments, MONGO_USER: payments_user, EVENT_COLLECTION: payments, BROKER_HOST: broker}
+    volumes:
+      - ./secrets/mongo-payments-password:/run/secrets/mongo-payments-password:ro
+      - ./secrets/rabbitmq-password:/run/secrets/rabbitmq-password:ro
+    depends_on: {mongo: {condition: service_healthy}, broker: {condition: service_healthy}}
+    networks: [private_data, private_messaging]
+
+  analytics_consumer:
+    build: {context: ., dockerfile: backend/Dockerfile}
+    command: ["python", "-m", "app.messaging.consumidor"]
+    restart: on-failure
+    environment: {MONGO_HOST: mongo, MONGO_DB: flor_analytics, MONGO_SERVICE: analytics, MONGO_USER: analytics_user, BROKER_HOST: broker}
+    volumes:
+      - ./secrets/mongo-analytics-password:/run/secrets/mongo-analytics-password:ro
+      - ./secrets/rabbitmq-password:/run/secrets/rabbitmq-password:ro
+    depends_on: {mongo_provision: {condition: service_completed_successfully}, broker: {condition: service_healthy}}
+    networks: [private_data, private_messaging]
+
+  gateway:
+    build: {context: ., dockerfile: backend/Dockerfile}
+    command: ["uvicorn", "app.gateway:app", "--host", "0.0.0.0", "--port", "8000"]
+    restart: on-failure
+    ports: ["127.0.0.1:8000:8000"]
+    volumes:
+      - ./secrets/jwt_private.pem:/run/secrets/jwt_private.pem:ro
+      - ./secrets/jwt_public.pem:/run/secrets/jwt_public.pem:ro
+      - ./secrets/service_token:/run/secrets/service_token:ro
+    depends_on: {clients: {condition: service_started}, inventory: {condition: service_started}, orders: {condition: service_started}, payments: {condition: service_started}, analytics: {condition: service_started}, graphql: {condition: service_started}}
+    networks: [edge, private_api]
+
+networks:
+  edge: {driver: bridge}
+  private_api: {internal: true}
+  private_data: {internal: true}
+  private_messaging: {internal: true}
+
+volumes:
+  mongo_data:
+  rabbit_data:
