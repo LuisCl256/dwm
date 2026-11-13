@@ -1,0 +1,21 @@
+"""Catálogo de origen tomado de js/catalogo.js, conservando nombres, precios e imágenes."""
+PRODUCTS = [
+    {"id": "ramo-aurora", "nombre": "Ramo Aurora", "categoria": "ramos", "precio": 18990,
+     "descripcion": "Rosas y ranúnculos en tonos coral, atados con lino natural.", "imagen": "img/ramo-aurora.jpg", "color": "#E7B49A"},
+    {"id": "ramo-silvestre", "nombre": "Ramo Silvestre", "categoria": "ramos", "precio": 15990,
+     "descripcion": "Flores de campo mixtas, estilo libre y espontáneo.", "imagen": "img/ramo-silvestre.jpeg", "color": "#C9B98C"},
+    {"id": "ramo-vida-nueva", "nombre": "Ramo Vida Nueva", "categoria": "ramos", "precio": 21990,
+     "descripcion": "Ideal para nacimientos y nuevos comienzos.", "imagen": "img/ramo-vida-nueva.jpg", "color": "#D9C7A8"},
+    {"id": "caja-terracota", "nombre": "Caja Terracota", "categoria": "cajas", "precio": 24990,
+     "descripcion": "Arreglo compacto presentado en cerámica artesanal.", "imagen": None, "color": "#C98B6B"},
+    {"id": "caja-atardecer", "nombre": "Caja Atardecer", "categoria": "cajas", "precio": 27990,
+     "descripcion": "Girasoles y flores naranjas en caja de madera clara.", "imagen": None, "color": "#E0A45C"},
+    {"id": "centro-boda-clasica", "nombre": "Centro de Mesa Boda Clásica", "categoria": "bodas", "precio": 45990,
+     "descripcion": "Centro de mesa en tonos blancos y verdes para recepciones.", "imagen": None, "color": "#AEBBA2"},
+    {"id": "arco-ceremonia", "nombre": "Arco Floral Ceremonia", "categoria": "bodas", "precio": 189990,
+     "descripcion": "Arco decorativo completo para ceremonias al aire libre.", "imagen": None, "color": "#94A78C"},
+    {"id": "suculenta-maceta", "nombre": "Suculenta en Maceta", "categoria": "plantas", "precio": 9990,
+     "descripcion": "Suculenta de bajo cuidado en maceta de cerámica.", "imagen": "img/suculenta.jpg", "color": "#8FA07E"},
+    {"id": "orquidea-phalaenopsis", "nombre": "Orquídea Phalaenopsis", "categoria": "plantas", "precio": 32990,
+     "descripcion": "Orquídea a elección en maceta decorativa, larga floración.", "imagen": "img/orquidea.jpg", "color": "#D8CFC2"},
+]
